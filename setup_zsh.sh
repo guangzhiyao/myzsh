@@ -313,45 +313,56 @@ run_remote_script() {
     log_info "Downloaded remote installer to $tmpfile (first 5 lines shown for audit):"
     head -n 5 "$tmpfile" || true
 
-    # Build the execution command and a human-readable preview for logging.
-    # Special-case the common '-s' invocation: many installers expect the script on stdin
-    # when invoked as `sh -s -- args...`. Detect that and prepare a pipe invocation.
-    local preview
+    # If the installer is expected to run as `sh -s -- ...`, many installers want the script on stdin.
+    # Detect that pattern and handle it by piping the tmpfile into the shell.
     if [ ${#args[@]} -gt 0 ] && [ "${args[0]}" = "-s" ]; then
-        # Forwarded args after -s
+        # forwarded args after -s
         local fwd=( "${args[@]:1}" )
-        # Preview shows how the command will be executed using stdin redirection
-        preview="$(printf '%q ' "$shell" "-s" "--" "${fwd[@]}" '<' "$tmpfile")"
+        # If the user supplied a leading '--', keep it; otherwise we'll insert '--' to end shell options.
+        local shell_argv=()
+        if [ ${#fwd[@]} -gt 0 ] && [ "${fwd[0]}" = "--" ]; then
+            # fwd already starts with '--' so use as-is
+            shell_argv=( "-s" "${fwd[@]}" )
+        else
+            shell_argv=( "-s" "--" "${fwd[@]}" )
+        fi
+
+        # Preview for logging (safe quoting)
+        local preview
+        preview="$(printf '%q ' "$shell" "${shell_argv[@]}" '<' "$tmpfile")"
         log_info "Prepared remote installer command: $preview"
+
         if [ "$DRY_RUN" -eq 1 ]; then
             printf '[DRY-RUN] %s\n' "$preview"
             return 0
         fi
 
         # Execute by piping the downloaded file into the shell's stdin
-        if "$shell" -s -- "${fwd[@]}" < "$tmpfile"; then
+        if "$shell" "${shell_argv[@]}" < "$tmpfile"; then
             log_success "Remote script executed successfully"
             return 0
         else
             log_error "Remote script failed: $url"
             return 1
         fi
-    else
-        # Normal invocation: pass the tmpfile as an argument to the shell
-        preview="$(printf '%q ' "$shell" "$tmpfile" "${args[@]}")"
-        log_info "Prepared remote installer command: $preview"
-        if [ "$DRY_RUN" -eq 1 ]; then
-            printf '[DRY-RUN] %s\n' "$preview"
-            return 0
-        fi
+    fi
 
-        if "$shell" "$tmpfile" "${args[@]}"; then
-            log_success "Remote script executed successfully"
-            return 0
-        else
-            log_error "Remote script failed: $url"
-            return 1
-        fi
+    # Normal invocation: pass the tmpfile as an argument to the shell
+    local preview
+    preview="$(printf '%q ' "$shell" "$tmpfile" "${args[@]}")"
+    log_info "Prepared remote installer command: $preview"
+
+    if [ "$DRY_RUN" -eq 1 ]; then
+        printf '[DRY-RUN] %s\n' "$preview"
+        return 0
+    fi
+
+    if "$shell" "$tmpfile" "${args[@]}"; then
+        log_success "Remote script executed successfully"
+        return 0
+    else
+        log_error "Remote script failed: $url"
+        return 1
     fi
 }
 
@@ -432,13 +443,13 @@ main() {
             echo "[DRY-RUN] curl -sS https://starship.rs/install.sh -o /tmp/starship_install.sh"
             echo "[DRY-RUN] sh /tmp/starship_install.sh -y"
         else
-            # Forward arguments correctly: -s (read from stdin), "--" to end options, "-y" to auto-confirm
+            # Forward invocation: sh -s -- -y  (handled by run_remote_script)
             if run_remote_script "https://starship.rs/install.sh" sh -s -- -y; then
-            log_success "Starship installed"
-        else
-            log_error "Failed to install Starship"
-            exit 1
-        fi
+                log_success "Starship installed"
+            else
+                log_error "Failed to install Starship"
+                exit 1
+            fi
         fi
     fi
 
