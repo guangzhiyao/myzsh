@@ -1,76 +1,29 @@
-# Atuin configuration - Privacy-first, local-first defaults
-# This configuration prioritizes local mode and privacy while providing
-# sensible defaults for searching and history presentation.
-#
-# Notes:
-# - auto_sync: disabled by default to avoid sending history to remote services.
-# - local: true keeps the database local-only.
-# - search_mode: 'fuzzy' gives the most flexible search experience for most users.
-# - filter_mode: 'global' deduplicates history across sessions.
-# - Adjust search_result_limit and preview_height to suit terminal size.
+# The address of your sync server
+#sync_address = "https://api.atuin.sh" # Or your own server, e.g., https://atuin.example.com
 
-# Do not enable automatic syncing by default (privacy-preserving)
+# Enable/disable auto-sync
 auto_sync = false
 
-# If auto_sync is enabled, this controls how often (in seconds) to sync.
-# Keep reasonable by default, but it's ignored while auto_sync = false.
-sync_interval = 3600
+# Frequency of sync in minutes
+#sync_frequency = "5m"
 
-# Search mode controls how Ctrl+R searches history:
-# - "fuzzy" : fuzzy match (recommended)
-# - "prefix": prefix-anchored matching
+# Style of the UI: 'full' or 'compact'
+style = "compact"
+
+# Search mode: 'prefix', 'fuzzy', or 'substring'
 search_mode = "fuzzy"
 
-# How to deduplicate repeated commands:
-# - "session": dedupe within the same shell session
-# - "global": dedupe across all sessions (recommended)
-# - "none": keep all duplicates
+# Filter mode: 'global' (all history), 'host' (this machine), 'directory' (cwd)
 filter_mode = "global"
 
-# How many context lines to store with each entry (keeps some surrounding lines)
-context_lines = 1
+# Whether to show the command directly for editing upon selection
+enter_accept = true
 
-# How history entries are displayed:
-# - "compact": short form (recommended)
-# - "full": include timestamps and other metadata
-history_format = "compact"
+# Height of the search window
+inline_height = 10
 
-# Input mode used for the search UI (match your shell editing mode)
-# Common values: "emacs" or "vi"
-input_mode = "emacs"
+# Disable/Enable usage stats
+show_stats = true
 
-# Prefer exact matches first in search results. Keep false for broader fuzzy-first results.
-exact = false
-
-# Maximum number of results to show in search
-search_result_limit = 25
-
-# How tall the preview pane should be (0 to disable). Requires terminal support.
-preview_height = 4
-
-# Enable or disable collection of usage statistics (local analytics)
-# Keep false by default for privacy.
-stats = true
-
-# Log search queries for debugging/analytics - disabled by default
-log_search = false
-
-# Path to Atuin database (uncomment to override)
-# db_path = "~/.local/share/atuin/history.db"
-
-# Run in local-only mode (do not attempt to sync). Recommended for privacy-first setups.
-local = true
-
-# Color/styling settings are left to the terminal; Atuin will respect the terminal palette.
-# If you want to force a theme, Atuin has more advanced settings—refer to Atuin docs.
-
-# Stats sub-table: enable/disable specific stats collection features
-[stats]
-# Show common command prefixes in stats
-common_prefix = true
-# Show common subcommands (e.g., `git commit`, `git push`)
-common_subcommands = true
-
-# End of config
-# To enable remote sync or other more advanced features, edit this file and
-# set `auto_sync = true` and configure your Atuin server/credentials per docs.
+[theme]
+name = "marine"
