@@ -313,29 +313,45 @@ run_remote_script() {
     log_info "Downloaded remote installer to $tmpfile (first 5 lines shown for audit):"
     head -n 5 "$tmpfile" || true
 
-    # Build the command array to execute and to display for debugging
-    local cmd=("$shell" "$tmpfile")
-    for a in "${args[@]}"; do
-        cmd+=("$a")
-    done
-
-    # Debug: show exactly what will be executed (safe quoting)
+    # Build the execution command and a human-readable preview for logging.
+    # Special-case the common '-s' invocation: many installers expect the script on stdin
+    # when invoked as `sh -s -- args...`. Detect that and prepare a pipe invocation.
     local preview
-    preview="$(printf '%q ' "${cmd[@]}")"
-    log_info "Prepared remote installer command: $preview"
+    if [ ${#args[@]} -gt 0 ] && [ "${args[0]}" = "-s" ]; then
+        # Forwarded args after -s
+        local fwd=( "${args[@]:1}" )
+        # Preview shows how the command will be executed using stdin redirection
+        preview="$(printf '%q ' "$shell" "-s" "--" "${fwd[@]}" '<' "$tmpfile")"
+        log_info "Prepared remote installer command: $preview"
+        if [ "$DRY_RUN" -eq 1 ]; then
+            printf '[DRY-RUN] %s\n' "$preview"
+            return 0
+        fi
 
-    if [ "$DRY_RUN" -eq 1 ]; then
-        printf '[DRY-RUN] %s\n' "$preview"
-        return 0
-    fi
-
-    # Execute using the array form to preserve arguments exactly
-    if "${cmd[@]}"; then
-        log_success "Remote script executed successfully"
-        return 0
+        # Execute by piping the downloaded file into the shell's stdin
+        if "$shell" -s -- "${fwd[@]}" < "$tmpfile"; then
+            log_success "Remote script executed successfully"
+            return 0
+        else
+            log_error "Remote script failed: $url"
+            return 1
+        fi
     else
-        log_error "Remote script failed: $url"
-        return 1
+        # Normal invocation: pass the tmpfile as an argument to the shell
+        preview="$(printf '%q ' "$shell" "$tmpfile" "${args[@]}")"
+        log_info "Prepared remote installer command: $preview"
+        if [ "$DRY_RUN" -eq 1 ]; then
+            printf '[DRY-RUN] %s\n' "$preview"
+            return 0
+        fi
+
+        if "$shell" "$tmpfile" "${args[@]}"; then
+            log_success "Remote script executed successfully"
+            return 0
+        else
+            log_error "Remote script failed: $url"
+            return 1
+        fi
     fi
 }
 
