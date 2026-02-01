@@ -269,18 +269,28 @@ install_font() {
 }
 
 # Execute remote script safely by downloading first and then running
-# Usage: run_remote_script "<url>" ["shell"] [args...]
-# Example: run_remote_script "https://starship.rs/install.sh" sh -s -- -y
+# Usage examples:
+#   run_remote_script "https://example/install.sh"            # runs with bash
+#   run_remote_script "https://example/install.sh" sh -s -- -y # runs with sh and forwards args
 run_remote_script() {
     local url="$1"
     shift || true
-    local shell="${1:-bash}"
-    shift || true
-    # capture all remaining arguments as an array to forward them exactly
-    local args=("$@")
+
+    # Default shell to use for executing the downloaded script
+    local shell="bash"
+    local args=()
+
+    # If a non-option token (likely a shell name) was provided next, treat it as the shell
+    if [ $# -gt 0 ] && [[ ! "$1" =~ ^- ]]; then
+        shell="$1"
+        shift || true
+    fi
+
+    # Remaining parameters (if any) are forwarded to the installer
+    args=("$@")
+
     local tmpfile
-    # Ensure tmpfile is always defined even if mktemp fails; using parameter expansion
-    # in the trap avoids unbound variable errors under `set -u`.
+    # Ensure tmpfile is always defined even if mktemp fails
     tmpfile=$(mktemp) || tmpfile=''
     trap 'rm -f "${tmpfile:-}"' RETURN
 
@@ -299,21 +309,28 @@ run_remote_script() {
         return 1
     fi
 
-    # Optionally show first few lines for auditing
+    # Show first few lines for audit
     log_info "Downloaded remote installer to $tmpfile (first 5 lines shown for audit):"
     head -n 5 "$tmpfile" || true
 
+    # Build the command array to execute and to display for debugging
+    local cmd=("$shell" "$tmpfile")
+    for a in "${args[@]}"; do
+        cmd+=("$a")
+    done
+
+    # Debug: show exactly what will be executed (safe quoting)
+    local preview
+    preview="$(printf '%q ' "${cmd[@]}")"
+    log_info "Prepared remote installer command: $preview"
+
     if [ "$DRY_RUN" -eq 1 ]; then
-        # Print a safely quoted preview of the command we would run
-        printf '[DRY-RUN] %s %s' "$shell" "$tmpfile"
-        for a in "${args[@]}"; do
-            printf ' %q' "$a"
-        done
-        echo
+        printf '[DRY-RUN] %s\n' "$preview"
         return 0
     fi
 
-    if "$shell" "$tmpfile" "${args[@]}"; then
+    # Execute using the array form to preserve arguments exactly
+    if "${cmd[@]}"; then
         log_success "Remote script executed successfully"
         return 0
     else
