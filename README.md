@@ -1,104 +1,44 @@
-## myzsh
+# myzsh
 
-Personalized Zsh setup with auto-complete, syntax highlighting, and modern prompt using Starship and Atuin shell history.
+A small, opinionated Zsh setup that installs:
+- Zsh + Oh-My-Zsh
+- Starship prompt
+- Atuin shell history
+- Useful Zsh plugins (`zsh-autosuggestions`, `zsh-syntax-highlighting`)
 
-## Prerequisites
+This repository provides a hardened, idempotent installer script: `./setup_zsh.sh`.
 
-- Debian 13+ (or any Debian-based distro with apt)
-- curl
-- git
+Prerequisites
+- Debian-based system (apt) is the primary target
+- `git` and either `curl` or `wget` available
 
-## Installation
-
+Quick install
 ```bash
-git clone https://github.com/NeverBlink/myzsh
+git clone https://github.com/guangzhiyao/myzsh
 cd myzsh
 chmod +x setup_zsh.sh
 ./setup_zsh.sh
 ```
 
-The script will install and configure:
-- **Zsh** shell with Oh-My-Zsh framework
-- **Starship** modern prompt
-- **Atuin** shell history management
-- **Plugins**: zsh-autosuggestions, zsh-syntax-highlighting
-- **Font**: CaskaydiaCove Nerd Font
+Important installer behaviour
+- `--dry-run` shows actions without making changes.
+- `--clean` / `--force` performs a clean install (replaces configs).
+- `--install-font` enables an optional best-effort Nerd Font download (disabled by default; useful only on UI/dev machines).
+- Existing user files are backed up with timestamps by default; `--clean` removes targets before copying.
+- The installer downloads remote installers to temporary files for audit before execution.
+- If an `Atuin` configuration already exists at `~/.config/atuin/config.toml`, the shipped config will be skipped unless `--clean` is used (to avoid duplicate TOML keys).
 
-After installation, restart your shell:
-```bash
-exec zsh
-```
+Post-install
+- Restart your shell or run: `exec zsh`
+- User configuration files written/modified:
+  - `~/.zshrc`
+  - `~/.config/starship.toml`
+  - `~/.config/atuin/config.toml` (only when not present or when using `--clean`)
 
-## Features
+Notes & recommendations
+- The installer assumes a Debian/apt environment. On other distros, run steps manually or adapt the script.
+- If you want the provided configs but prefer to merge manually, consider copying `atuin.toml` to `~/.config/atuin/config.toml.example` and merging by hand.
+- Verify `starship` and `atuin` behavior after install (e.g., `starship explain`, `atuin --version`).
 
-- 🌠 **Starship Prompt**: Fast, customizable, and cross-platform prompt
-- 📜 **Atuin**: Better shell history with sync capabilities
-- ✨ **Autosuggestions**: Fish-like autocompletion
-- 🎨 **Syntax Highlighting**: Real-time command highlighting
-- 📝 **Nerd Font**: CaskaydiaCove for better UI rendering
-
-## Customization
-
-### Starship Prompt
-The prompt is configured with a modern, clean design that includes:
-- **Fast response** (500ms timeout) - responsive even on slow connections
-- **Directory truncation** - shows context without cluttering
-- **Git integration** - branch and status indicators
-- **Command duration** - shows how long commands take (if > 2 seconds)
-- **Status indicator** - shows ✓/✗ for success/failure
-
-Edit `~/.config/starship.toml` to customize. Popular options:
-```toml
-# Change timeout (in milliseconds)
-command_timeout = 500
-
-# Disable modules you don't need
-[nodejs]
-disabled = false
-
-# Customize colors
-[directory]
-style = "bold cyan"
-```
-
-See [Starship documentation](https://starship.rs/config/) for full options.
-
-### Atuin History
-Atuin provides powerful shell history with:
-- **Fuzzy search** - Ctrl+R for smart history search
-- **Deduplication** - removes duplicate commands
-- **Statistics** - tracks your command usage
-- **Local mode** - works offline without sync
-
-Edit `~/.config/atuin/config.toml` to customize:
-```toml
-# Enable remote sync
-auto_sync = true
-sync_interval = 60
-
-# Change search mode
-search_mode = "prefix"  # or "fuzzy"
-
-# Show command preview
-preview_height = 4
-```
-
-See [Atuin documentation](https://docs.atuin.sh/) for all options.
-
-## Used Tools / Repos
-
-### Core
-- **Oh-My-Zsh** - https://github.com/ohmyzsh/ohmyzsh
-- **Starship** - https://github.com/starship/starship
-- **Atuin** - https://github.com/atuinsh/atuin
-
-### Plugins
-- **zsh-autosuggestions** - https://github.com/zsh-users/zsh-autosuggestions
-- **zsh-syntax-highlighting** - https://github.com/zsh-users/zsh-syntax-highlighting
-
-### Font
-- **CaskaydiaCove Nerd Font** - https://github.com/ryanoasis/nerd-fonts/tree/master/patched-fonts/CascadiaCode
-
-## License
-
-See LICENSE file
+License
+See the `LICENSE` file in this repository.

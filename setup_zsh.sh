@@ -22,6 +22,7 @@ NC='\033[0m' # No Color
 
 DRY_RUN=0
 CLEAN_INSTALL=0
+INSTALL_FONT=0
 
 log_info()    { echo -e "${BLUE}ℹ️  $*${NC}"; }
 log_success() { echo -e "${GREEN}✓ $*${NC}"; }
@@ -30,12 +31,13 @@ log_error()   { echo -e "${RED}✗ $*${NC}" >&2; }
 
 usage() {
     cat <<EOF
-Usage: $0 [--dry-run] [--clean] [--help]
+Usage: $0 [--dry-run] [--clean] [--install-font] [--help]
 
 Options:
-  --dry-run   Show what would be done, don't perform destructive changes
-  --clean     Clean install: replace existing configuration files without backups
-  --help      Show this help
+  --dry-run      Show what would be done, don't perform destructive changes
+  --clean        Clean install: replace existing configuration files without backups
+  --install-font Attempt to download and install a Nerd Font (only useful on UI/dev machines)
+  --help         Show this help
 EOF
 }
 
@@ -44,6 +46,7 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --dry-run) DRY_RUN=1; shift ;;
         --clean|--force) CLEAN_INSTALL=1; shift ;;
+        --install-font) INSTALL_FONT=1; shift ;;
         --help) usage; exit 0 ;;
         *) log_error "Unknown option: $1"; usage; exit 2 ;;
     esac
@@ -235,7 +238,7 @@ install_font() {
     tmpdir=$(mktemp -d)
     trap 'rm -rf "$tmpdir"' EXIT
 
-    local zip_url="https://github.com/ryanoasis/nerd-fonts/releases/download/v3.0.0/CascadiaCode.zip"
+    local zip_url="https://github.com/ryanoasis/nerd-fonts/releases/download/v3.4.0/CascadiaCode.zip"
     local zip_file="$tmpdir/cascadiacode.zip"
 
     if command -v curl >/dev/null 2>&1; then
@@ -343,8 +346,12 @@ main() {
     # Set zsh default (best-effort)
     set_zsh_default || log_warn "Could not set zsh as default automatically"
 
-    # Install font (non-fatal)
-    install_font || true
+    # Install font (non-fatal) — only if explicitly requested via --install-font
+    if [ "$INSTALL_FONT" -eq 1 ]; then
+        install_font || true
+    else
+        log_info "Skipping font installation (use --install-font to enable)"
+    fi
 
     # Install Oh-My-Zsh (if not present)
     if [ ! -d "$HOME/.oh-my-zsh" ]; then
