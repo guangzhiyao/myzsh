@@ -269,10 +269,15 @@ install_font() {
 }
 
 # Execute remote script safely by downloading first and then running
+# Usage: run_remote_script "<url>" ["shell"] [args...]
+# Example: run_remote_script "https://starship.rs/install.sh" sh -s -- -y
 run_remote_script() {
     local url="$1"
-    local shell="${2:-bash}"
-    local args="${3:-}"
+    shift || true
+    local shell="${1:-bash}"
+    shift || true
+    # capture all remaining arguments as an array to forward them exactly
+    local args=("$@")
     local tmpfile
     # Ensure tmpfile is always defined even if mktemp fails; using parameter expansion
     # in the trap avoids unbound variable errors under `set -u`.
@@ -299,11 +304,16 @@ run_remote_script() {
     head -n 5 "$tmpfile" || true
 
     if [ "$DRY_RUN" -eq 1 ]; then
-        echo "[DRY-RUN] $shell \"$tmpfile\" $args"
+        # Print a safely quoted preview of the command we would run
+        printf '[DRY-RUN] %s %s' "$shell" "$tmpfile"
+        for a in "${args[@]}"; do
+            printf ' %q' "$a"
+        done
+        echo
         return 0
     fi
 
-    if $shell "$tmpfile" $args; then
+    if "$shell" "$tmpfile" "${args[@]}"; then
         log_success "Remote script executed successfully"
         return 0
     else
@@ -361,12 +371,12 @@ main() {
             echo "[DRY-RUN] curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh -o /tmp/ohmyzsh_install.sh"
             echo "[DRY-RUN] sh /tmp/ohmyzsh_install.sh --unattended"
         else
-            if run_remote_script "https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh" sh -- "--unattended"; then
-                log_success "Oh-My-Zsh installed"
-            else
-                log_error "Oh-My-Zsh installation failed"
-                exit 1
-            fi
+            if run_remote_script "https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh" sh "--unattended"; then
+                    log_success "Oh-My-Zsh installed"
+                else
+                    log_error "Oh-My-Zsh installation failed"
+                    exit 1
+                fi
         fi
     else
         log_success "Oh-My-Zsh is already installed"
@@ -389,12 +399,13 @@ main() {
             echo "[DRY-RUN] curl -sS https://starship.rs/install.sh -o /tmp/starship_install.sh"
             echo "[DRY-RUN] sh /tmp/starship_install.sh -y"
         else
-            if run_remote_script "https://starship.rs/install.sh" sh -- "-s -- -y"; then
-                log_success "Starship installed"
-            else
-                log_error "Failed to install Starship"
-                exit 1
-            fi
+            # Forward arguments correctly: -s (read from stdin), "--" to end options, "-y" to auto-confirm
+            if run_remote_script "https://starship.rs/install.sh" sh -s -- -y; then
+            log_success "Starship installed"
+        else
+            log_error "Failed to install Starship"
+            exit 1
+        fi
         fi
     fi
 
